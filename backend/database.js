@@ -1,6 +1,9 @@
 import { MongoClient } from "mongodb";
+import dotenv from "dotenv";
 
-const uri = "mongodb+srv://oriane:taekai@irc.5htno.mongodb.net/?retryWrites=true&w=majority&appName=IRC";
+dotenv.config();
+
+const uri = process.env.MONGO_URI;
 const client = new MongoClient(uri);
 
 let messagesCollection;
@@ -20,6 +23,8 @@ export async function initializeDatabase() {
     await messagesCollection.createIndex({ _id: 1 });
     await roomsCollection.createIndex({ name: 1 }, { unique: true });
     await privateMessagesCollection.createIndex({ to: 1 });
+    console.log("MongoDB URI:", process.env.MONGO_URI ? "Loaded" : "Not found");
+
 
   } catch (err) {
     console.error("Failed to connect to MongoBD", err);
