@@ -31,22 +31,21 @@ const PrivateMessage = ({ socket, username }) => {
             socket.off("private message", handlePrivateMessage);
         };
     }, [socket, username]);
-
     useEffect(() => {
-        socket.on("private message", (data) => {
-            console.log("📩 Message privé reçu :", data);
-            setMessages((prevMessages) => [...prevMessages, data]);
-
-            // ✅ Ajouter automatiquement l'utilisateur à la liste des conversations
-            setConversations((prev) =>
-                prev.includes(data.from) || data.from === username ? prev : [...prev, data.from]
-            );
+        socket.emit("get private conversations", (response) => {
+          if (response.success) {
+            console.log("📌 Conversations reçues du serveur :", response.conversations);
+            setConversations(response.conversations);
+          } else {
+            console.error("❌ Erreur lors de la récupération des conversations :", response.message);
+          }
         });
-
+      
         return () => {
-            socket.off("private message");
+          socket.off("private conversations");
         };
-    }, [socket, username]); // 🔥 Plus besoin de `conversations` ici
+      }, []);
+       // 🔥 Plus besoin de `conversations` ici
 
     useEffect(() => {
         socket.emit("get private conversations", {}, (response) => {

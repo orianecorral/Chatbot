@@ -5,8 +5,6 @@ import RoomModal from "./components/RoomModal";
 import ChatInterface from "./components/ChatInterface";
 import SideMenu from "./components/SideMenu";
 import PrivateMessage from "./components/PrivateMessage";
-import { FaDoorOpen } from "react-icons/fa";
-
 
 const socket = io("http://localhost:3000"); // Connexion au serveur
 
@@ -23,7 +21,6 @@ const App = () => {
   const [usersInRoom, setUsersInRoom] = useState([]); // 🔥 Liste des utilisateurs
   const [notifications, setNotifications] = useState([]);
   const [newUsername, setNewUsername] = useState("");
-
 
   // Gestion des messages reçus via Socket.IO
   useEffect(() => {
@@ -73,16 +70,38 @@ const App = () => {
   }, [room]); // Déclenché UNIQUEMENT lorsque `room` change
 
   useEffect(() => {
-    socket.emit("list rooms"); // Demande les rooms au serveur
+    const fetchRooms = () => {
+      socket.emit("list rooms"); // Demande la liste des rooms
+    };
+
+    // 🔥 Récupère les rooms disponibles dès le démarrage
+    fetchRooms();
 
     socket.on("available rooms", (rooms) => {
-      setAvailableRooms(rooms); // 🔥 Mets à jour l'état avec les rooms disponibles
+      console.log("🔹 Rooms mises à jour :", rooms);
+      setAvailableRooms(rooms); // Met à jour la liste des rooms
     });
 
     return () => {
       socket.off("available rooms");
     };
   }, []);
+
+  useEffect(() => {
+    socket.on("room created", () => {
+      socket.emit("list rooms"); // 🔥 Met à jour la liste si une room est créée
+    });
+
+    socket.on("room deleted", () => {
+      socket.emit("list rooms"); // 🔥 Met à jour la liste si une room est supprimée
+    });
+
+    return () => {
+      socket.off("room created");
+      socket.off("room deleted");
+    };
+  }, []);
+
 
 
 
@@ -131,17 +150,6 @@ const App = () => {
     };
   }, [room]); // Exécute l'effet uniquement si `room` change
 
-  useEffect(() => {
-    socket.emit("list rooms"); // Demande les rooms au serveur
-
-    socket.on("available rooms", (rooms) => {
-      setAvailableRooms(rooms); // 🔥 Mets à jour l'état avec les rooms disponibles
-    });
-
-    return () => {
-      socket.off("available rooms");
-    };
-  }, []);
 
 
   useEffect(() => {
@@ -379,9 +387,6 @@ const App = () => {
       }
     });
   };
-  const fetchRooms = () => {
-    socket.emit("get rooms");
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-800 flex flex-col items-center justify-center p-6">
@@ -394,30 +399,21 @@ const App = () => {
 
       {!showUsernameModal && !showRoomModal && (
         <>
-          {/* 🔥 Bouton "Rooms" */}
-          <button
-            onClick={() => {
-              fetchRooms();
-              setShowSideMenu(true);
-            }}
-            className="absolute top-5 left-5 btn btn-primary flex items-center gap-2 px-6 py-3 text-lg shadow-lg hover:scale-105 transition"
-          >
-            <FaDoorOpen size={20} /> Rooms
-          </button>
-
           {/* 🔥 Interface du Chat */}
           <ChatInterface
             messages={messages || []} // Par défaut, un tableau vide
             input={input}
             setInput={setInput}
             sendMessage={sendMessage}
-            rooms={availableRooms || []}
+            rooms={availableRooms}
+            setRooms={setAvailableRooms}
             joinRoom={handleRoomSubmit}
             username={username}
             usersInRoom={usersInRoom}
             changeUsername={changeUsername}
             newUsername={newUsername}
             setNewUsername={setNewUsername}
+            socket={socket}
 
           />
         </>

@@ -1,21 +1,22 @@
 import React, { useEffect, useRef } from "react";
-import { FaUsers, FaDoorOpen } from "react-icons/fa"; 
+import { FaUsers, FaDoorOpen } from "react-icons/fa";
 
 const ChatInterface = ({
   messages = [],
   input = "",
   setInput,
   sendMessage,
-  rooms = [],
   joinRoom,
   username,
+  rooms,
+  setRooms,
   usersInRoom = [],
   newUsername,
   setNewUsername,
   changeUsername,
+  socket,
 }) => {
-  const messagesEndRef = useRef(null); // Référence pour l'auto-scroll
-
+  const messagesEndRef = useRef(null);
   // Fonction pour faire défiler automatiquement vers le dernier message
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -25,12 +26,58 @@ const ChatInterface = ({
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    // 🔥 Demande la liste des rooms dès l'affichage du chat
+    socket.emit("list rooms");
+
+    // 🔥 Met à jour l'état dès qu'on reçoit les rooms du backend
+    socket.on("available rooms", (rooms) => {
+      console.log("📌 Rooms reçues du serveur :", rooms);
+      setRooms(rooms);
+    });
+
+    return () => {
+      socket.off("available rooms");
+    };
+  }, [socket]); // 🔥 Ajout de `socket` comme dépendance
+
+
+  useEffect(() => {
+    socket.on("room created", () => {
+      socket.emit("list rooms"); // 🔥 Met à jour si une room est créée
+    });
+
+    socket.on("room deleted", () => {
+      socket.emit("list rooms"); // 🔥 Met à jour si une room est supprimée
+    });
+
+    return () => {
+      socket.off("room created");
+      socket.off("room deleted");
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.emit("list rooms"); // 🔥 Demande la liste des rooms au serveur
+
+    socket.on("available rooms", (rooms) => {
+      console.log("📌 Rooms reçues du serveur :", rooms); // 🔥 Ajout du log
+      setRooms(rooms);
+    });
+
+    return () => {
+      socket.off("available rooms");
+    };
+  }, []);
+
+
   const uniqueUsers = Array.from(
     new Map(usersInRoom.map((user) => [user.username, user])).values()
   );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-800 flex flex-col items-center">
+      {console.log("📌 Liste affichée dans l'interface :", rooms)}
 
       {/* 🌟 Header */}
       <header className="w-full bg-white shadow-lg py-5 text-center text-3xl font-extrabold text-primary tracking-wide">
@@ -42,7 +89,8 @@ const ChatInterface = ({
         {/* 🔥 Sidebar responsive */}
         <div className="w-full md:w-1/4 bg-white p-5 shadow-xl h-auto md:h-[85vh] rounded-lg flex flex-col mb-4 md:mb-0">
 
-          {/* 🌟 Rooms Section */}
+          {/* 🔥 Liste des rooms disponibles */}
+          {/* 🔥 Liste des rooms disponibles */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-primary">Available Rooms</h2>

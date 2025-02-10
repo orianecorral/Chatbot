@@ -4,8 +4,6 @@ import { getAvailableRooms } from "./rooms.js";
 import { getRoomsCollection } from "./database.js";
 import { getPrivateMessagesCollection } from "./database.js";
 
-
-
 export function handleSocketConnection(io) {
   io.on("connection", async (socket) => {
     const username = socket.handshake.auth.username;
@@ -111,6 +109,21 @@ export function handleSocketConnection(io) {
       }
     });
 
+    socket.on("list rooms", async () => {
+      try {
+        const roomsCollection = getRoomsCollection();
+        const rooms = await roomsCollection.find({}).toArray();
+    
+        console.log("📌 Rooms envoyées au client :", rooms); // 🔥 Debug
+    
+        // 🔥 Envoi des rooms à tous les clients
+        io.emit("available rooms", rooms);
+      } catch (error) {
+        console.error("❌ Erreur lors de la récupération des rooms :", error);
+      }
+    });
+    
+
     socket.on("private message", async ({ to, message }, callback) => {
       try {
         const privateMessagesCollection = getPrivateMessagesCollection();
@@ -175,24 +188,29 @@ export function handleSocketConnection(io) {
       }
     });
     
-    socket.on("get private conversations", async (callback) => {
+    socket.on("get private conversations", async () => {
       try {
         const privateMessagesCollection = getPrivateMessagesCollection();
         const username = socket.handshake.auth.username;
     
         // 🔥 Récupérer la liste unique des utilisateurs avec qui cet utilisateur a discuté
-        const conversations = await privateMessagesCollection.distinct("to", { from: username });
+        const sentConversations = await privateMessagesCollection.distinct("to", { from: username });
+        const receivedConversations = await privateMessagesCollection.distinct("from", { to: username });
     
-        callback({ success: true, conversations });
+        // 🔥 Fusionner les conversations sans doublons
+        const conversations = Array.from(new Set([...sentConversations, ...receivedConversations]));
+    
+        console.log("📌 Conversations envoyées :", conversations); // 🔥 Debug
+    
+        // 🔥 Envoi des conversations au client
+        socket.emit("private conversations", conversations);
       } catch (error) {
         console.error("Erreur lors de la récupération des conversations :", error);
-        callback({ success: false, message: "Impossible de récupérer les conversations." });
+        socket.emit("private conversations error", "Impossible de récupérer les conversations.");
       }
     });
     
-    
-    
-
+  
     // In your socket.io connection handler
     socket.on("change username", async (newUsername, callback) => {
       try {
@@ -239,28 +257,12 @@ export function handleSocketConnection(io) {
 
         io.to(roomName).emit("system message", `${socket.username} has left the room`, roomName);
         socket.leave(roomName);
-
         callback({ success: true, room: roomName }); // 🔥 Envoie une réponse
       } catch (error) {
         console.error("Error quitting room:", error);
         callback({ success: false, message: "Failed to leave the room." }); // 🔥 Gérer l'erreur
       }
     });
-
-
-    socket.on("list rooms", async (callback) => {
-      try {
-        const roomsCollection = getRoomsCollection();
-        const rooms = await roomsCollection.find({}).toArray();
-        callback({ success: true, rooms });
-      } catch (error) {
-        console.error("Error fetching rooms:", error);
-        callback({ success: false, message: "Could not fetch rooms." });
-      }
-    });
-
-
-
 
 
     // Suppression d'une room
