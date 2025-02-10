@@ -155,9 +155,9 @@ const App = () => {
         });
       }
     };
-  
+
     socket.on("connect", handleSocketConnect);
-  
+
     return () => {
       socket.off("connect", handleSocketConnect);
     };
@@ -224,12 +224,12 @@ const App = () => {
     socket.on("private message", (data) => {
       alert(`New private message from ${data.from}: ${data.content}`);
     });
-  
+
     return () => {
       socket.off("private message");
     };
   }, []);
-  
+
 
   const sendMessage = () => {
     if (!input.trim()) return;
@@ -262,7 +262,7 @@ const App = () => {
 
     } else if (command === "/quit") {
       if (!arg) return alert("Usage: /quit channel_name");
-    
+
       socket.emit("quit room", arg, (response) => {
         if (response.success) {
           setRoom(""); // Quitte la room
@@ -272,8 +272,8 @@ const App = () => {
           alert(response.message);
         }
       });
-    
-  
+
+
     } else if (command === "/users") {
       if (!room) {
         alert("You're not in any room.");
@@ -314,26 +314,26 @@ const App = () => {
 
     } else if (command === "/msg") {
       const parts = input.split(" ");
-    if (parts.length < 3) {
-      alert("Usage: /msg username message");
-      return;
-    }
-
-    const to = parts[1];
-    const message = parts.slice(2).join(" ");
-
-    socket.emit("private message", { to, message }, (response) => {
-      if (!response.success) {
-        alert(response.message);
+      if (parts.length < 3) {
+        alert("Usage: /msg username message");
+        return;
       }
-    });
+
+      const to = parts[1];
+      const message = parts.slice(2).join(" ");
+
+      socket.emit("private message", { to, message }, (response) => {
+        if (!response.success) {
+          alert(response.message);
+        }
+      });
     } else if (command === "/nick") {
       if (!arg) {
         showNotification("Usage: /nick new_username");
       } else {
-        changeUsername(arg); 
+        changeUsername(arg);
       }
-  
+
     } else {
       // Envoi de message normal
       socket.emit("room message", {
@@ -345,101 +345,105 @@ const App = () => {
     setInput("");
   };
 
- // Update changeUsername function
-const changeUsername = (newName) => {
-  if (!newName.trim()) return;
+  // Update changeUsername function
+  const changeUsername = (newName) => {
+    if (!newName.trim()) return;
 
-  // Store current room before disconnect
-  const previousRoom = room;
+    // Store current room before disconnect
+    const previousRoom = room;
 
-  socket.emit("change username", newName.trim(), async (response) => {
-    if (response.success) {
-      // 🔥 Reconnect and rejoin room
-      socket.disconnect();
-      
-      // Update socket auth with new username
-      socket.auth = { username: newName.trim() };
-      
-      // Reconnect and rejoin previous room
-      socket.connect();
-      
-      if (previousRoom) {
-        socket.emit("join room", previousRoom, (joinResponse) => {
-          if (joinResponse.success) {
-            setUsername(response.newUsername);
-            setNewUsername("");
-            showNotification(`Username changed to ${response.newUsername}`);
-          } else {
-            alert("Failed to rejoin room after username change");
-          }
-        });
+    socket.emit("change username", newName.trim(), async (response) => {
+      if (response.success) {
+        // 🔥 Reconnect and rejoin room
+        socket.disconnect();
+
+        // Update socket auth with new username
+        socket.auth = { username: newName.trim() };
+
+        // Reconnect and rejoin previous room
+        socket.connect();
+
+        if (previousRoom) {
+          socket.emit("join room", previousRoom, (joinResponse) => {
+            if (joinResponse.success) {
+              setUsername(response.newUsername);
+              setNewUsername("");
+              showNotification(`Username changed to ${response.newUsername}`);
+            } else {
+              alert("Failed to rejoin room after username change");
+            }
+          });
+        }
+      } else {
+        alert(response.message);
       }
-    } else {
-      alert(response.message);
-    }
-  });
-};
+    });
+  };
   const fetchRooms = () => {
     socket.emit("get rooms");
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-800 flex flex-col items-center justify-center p-6">
-  {showUsernameModal && <UsernameModal onSubmit={handleUsernameSubmit} />}
-  {showRoomModal && <RoomModal onSubmit={handleRoomSubmit} />}
-
-  {!showUsernameModal && !showRoomModal && (
-    <>
-      {/* 🔥 Bouton "Rooms" */}
-      <button
-        onClick={() => {
-          fetchRooms();
-          setShowSideMenu(true);
-        }}
-        className="absolute top-5 left-5 btn btn-primary flex items-center gap-2 px-6 py-3 text-lg shadow-lg hover:scale-105 transition"
-      >
-        <FaDoorOpen size={20} /> Rooms
-      </button>
-
-      {/* 🔥 Interface du Chat */}
-      <ChatInterface
-        messages={messages || []} // Par défaut, un tableau vide
-        input={input}
-        setInput={setInput}
-        sendMessage={sendMessage}
-        rooms={availableRooms || []} 
-        joinRoom={handleRoomSubmit}
-        username={username}
-        usersInRoom={usersInRoom}
-        changeUsername={changeUsername}
-        newUsername={newUsername}
-        setNewUsername={setNewUsername}
-
-      />
-    </>
-  )}
-
-  {/* 🔥 SideMenu amélioré */}
-  {showSideMenu && (
-    <SideMenu
-      rooms={availableRooms}
-      onClose={() => setShowSideMenu(false)}
-      onJoinRoom={(room) => handleRoomSubmit(room)}
-    />
-  )}
-
-  {/* Interface des messages privés */}
-  <PrivateMessage socket={socket} username={username} />
-
-  {/* 🔥 Notifications stylisées */}
-  <div className="fixed top-5 right-5 flex flex-col space-y-2 z-50">
-    {notifications.map((msg, index) => (
-      <div key={index} className="alert alert-success shadow-lg text-lg p-3 transition-opacity duration-500 animate-fadeIn">
-        {msg}
+      {/* 🔥 Encart utilisateur connecté */}
+      <div className="fixed bottom-4 left-4 bg-gray-100 p-3 rounded-lg shadow-md flex items-center gap-2">
+        <span className="text-gray-700 text-lg font-semibold">👤 {username}</span>
       </div>
-    ))}
-  </div>
-</div>
+      {showUsernameModal && <UsernameModal onSubmit={handleUsernameSubmit} />}
+      {showRoomModal && <RoomModal onSubmit={handleRoomSubmit} />}
+
+      {!showUsernameModal && !showRoomModal && (
+        <>
+          {/* 🔥 Bouton "Rooms" */}
+          <button
+            onClick={() => {
+              fetchRooms();
+              setShowSideMenu(true);
+            }}
+            className="absolute top-5 left-5 btn btn-primary flex items-center gap-2 px-6 py-3 text-lg shadow-lg hover:scale-105 transition"
+          >
+            <FaDoorOpen size={20} /> Rooms
+          </button>
+
+          {/* 🔥 Interface du Chat */}
+          <ChatInterface
+            messages={messages || []} // Par défaut, un tableau vide
+            input={input}
+            setInput={setInput}
+            sendMessage={sendMessage}
+            rooms={availableRooms || []}
+            joinRoom={handleRoomSubmit}
+            username={username}
+            usersInRoom={usersInRoom}
+            changeUsername={changeUsername}
+            newUsername={newUsername}
+            setNewUsername={setNewUsername}
+
+          />
+        </>
+      )}
+
+      {/* 🔥 SideMenu amélioré */}
+      {showSideMenu && (
+        <SideMenu
+          rooms={availableRooms}
+          onClose={() => setShowSideMenu(false)}
+          onJoinRoom={(room) => handleRoomSubmit(room)}
+        />
+      )}
+
+      {/* Interface des messages privés */}
+      <PrivateMessage socket={socket} username={username} />
+
+      {/* 🔥 Notifications stylisées */}
+      <div className="fixed top-5 right-5 flex flex-col space-y-2 z-50">
+        {notifications.map((msg, index) => (
+          <div key={index} className="alert alert-success shadow-lg text-lg p-3 transition-opacity duration-500 animate-fadeIn">
+            {msg}
+          </div>
+        ))}
+      </div>
+    </div>
 
 
   );
