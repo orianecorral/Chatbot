@@ -114,48 +114,82 @@ export function handleSocketConnection(io) {
     socket.on("private message", async ({ to, message }, callback) => {
       try {
         const privateMessagesCollection = getPrivateMessagesCollection();
-        
-        // Vérifier si le destinataire est en ligne
-        const recipientSocket = [...io.sockets.sockets.values()].find(
-          (s) => s.handshake.auth.username === to
-        );
     
-        // Vérification si le socket de l'expéditeur est bien défini
+        // Vérifier si l'utilisateur est bien identifié
         if (!socket.handshake.auth.username) {
           return callback({ success: false, message: "User not authenticated." });
         }
     
-        const sender = socket.handshake.auth.username; // Récupération correcte du sender
-    
+        const sender = socket.handshake.auth.username;
         const messageData = {
-          from: sender, // ✅ Correction ici : On récupère bien l'expéditeur
+          from: sender,
           to,
           content: message,
           timestamp: new Date(),
         };
     
-        // 🔥 Log pour debug
-        console.log("Message privé envoyé :", messageData);
-        console.log("Recherche du socket pour :", to);
-        console.log("Utilisateurs connectés :", [...io.sockets.sockets.values()].map(s => s.handshake.auth.username));
+        console.log("📩 Message privé envoyé :", messageData);
     
-        // 🔹 Sauvegarde en base de données (même si le destinataire est hors ligne)
+        // ✅ 1. Sauvegarde en base de données
         await privateMessagesCollection.insertOne(messageData);
     
+        // ✅ 2. Trouver le socket du destinataire
+        const recipientSocket = [...io.sockets.sockets.values()].find(
+          (s) => s.handshake.auth.username === to
+        );
+    
         if (recipientSocket) {
-          console.log(`📩 Envoi du message à ${to} via le socket ID:`, recipientSocket.id);
+          console.log(`📨 Message délivré à : ${to}`);
           recipientSocket.emit("private message", messageData);
         } else {
-          console.warn(`⚠️ Le destinataire ${to} est hors ligne. Message stocké.`);
+          console.warn(`⚠️ ${to} est hors ligne. Message stocké en DB.`);
         }
-        
     
-        callback({ success: true, message: "Message sent successfully." });
+        callback({ success: true });
       } catch (error) {
-        console.error("Erreur lors de l'envoi du message privé :", error);
-        callback({ success: false, message: "Failed to send message." });
+        console.error("Erreur d'envoi du message privé :", error);
+        callback({ success: false, message: "Erreur lors de l'envoi." });
       }
     });
+
+    socket.on("get private messages", async ({ with: user }, callback) => {
+      try {
+        const privateMessagesCollection = getPrivateMessagesCollection();
+        const username = socket.handshake.auth.username;
+    
+        // 🔥 Trouver les messages échangés entre les deux utilisateurs
+        const messages = await privateMessagesCollection
+          .find({
+            $or: [
+              { from: username, to: user },
+              { from: user, to: username },
+            ],
+          })
+          .sort({ timestamp: 1 }) // Trie par ordre chronologique
+          .toArray();
+    
+        callback({ success: true, messages });
+      } catch (error) {
+        console.error("Erreur lors du chargement des messages privés :", error);
+        callback({ success: false, message: "Impossible de récupérer les messages." });
+      }
+    });
+    
+    socket.on("get private conversations", async (callback) => {
+      try {
+        const privateMessagesCollection = getPrivateMessagesCollection();
+        const username = socket.handshake.auth.username;
+    
+        // 🔥 Récupérer la liste unique des utilisateurs avec qui cet utilisateur a discuté
+        const conversations = await privateMessagesCollection.distinct("to", { from: username });
+    
+        callback({ success: true, conversations });
+      } catch (error) {
+        console.error("Erreur lors de la récupération des conversations :", error);
+        callback({ success: false, message: "Impossible de récupérer les conversations." });
+      }
+    });
+    
     
     
 
