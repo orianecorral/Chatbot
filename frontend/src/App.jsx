@@ -4,6 +4,7 @@ import UsernameModal from "./components/UsernameModal";
 import RoomModal from "./components/RoomModal";
 import ChatInterface from "./components/ChatInterface";
 import SideMenu from "./components/SideMenu";
+import PrivateMessage from "./components/PrivateMessage";
 import { FaDoorOpen } from "react-icons/fa";
 
 
@@ -219,6 +220,17 @@ const App = () => {
     });
   };
 
+  useEffect(() => {
+    socket.on("private message", (data) => {
+      alert(`New private message from ${data.from}: ${data.content}`);
+    });
+  
+    return () => {
+      socket.off("private message");
+    };
+  }, []);
+  
+
   const sendMessage = () => {
     if (!input.trim()) return;
 
@@ -299,6 +311,22 @@ const App = () => {
           alert(response.message);
         }
       });
+
+    } else if (command === "/msg") {
+      const parts = input.split(" ");
+    if (parts.length < 3) {
+      alert("Usage: /msg username message");
+      return;
+    }
+
+    const to = parts[1];
+    const message = parts.slice(2).join(" ");
+
+    socket.emit("private message", { to, message }, (response) => {
+      if (!response.success) {
+        alert(response.message);
+      }
+    });
     } else if (command === "/nick") {
       if (!arg) {
         showNotification("Usage: /nick new_username");
@@ -400,6 +428,9 @@ const changeUsername = (newName) => {
     />
   )}
 
+  {/* Interface des messages privés */}
+  <PrivateMessage socket={socket} username={username} />
+
   {/* 🔥 Notifications stylisées */}
   <div className="fixed top-5 right-5 flex flex-col space-y-2 z-50">
     {notifications.map((msg, index) => (
@@ -409,6 +440,7 @@ const changeUsername = (newName) => {
     ))}
   </div>
 </div>
+
 
   );
 };

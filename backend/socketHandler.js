@@ -2,6 +2,7 @@ import { getMessagesCollection } from "./database.js";
 import { createRoom, joinRoom, addMessageToRoom, getRoomMessages } from "./rooms.js";
 import { getAvailableRooms } from "./rooms.js";
 import { getRoomsCollection } from "./database.js";
+import { getPrivateMessagesCollection } from "./database.js";
 
 
 
@@ -109,6 +110,54 @@ export function handleSocketConnection(io) {
         callback({ success: false, message: error.message });
       }
     });
+
+    socket.on("private message", async ({ to, message }, callback) => {
+      try {
+        const privateMessagesCollection = getPrivateMessagesCollection();
+        
+        // Vérifier si le destinataire est en ligne
+        const recipientSocket = [...io.sockets.sockets.values()].find(
+          (s) => s.handshake.auth.username === to
+        );
+    
+        // Vérification si le socket de l'expéditeur est bien défini
+        if (!socket.handshake.auth.username) {
+          return callback({ success: false, message: "User not authenticated." });
+        }
+    
+        const sender = socket.handshake.auth.username; // Récupération correcte du sender
+    
+        const messageData = {
+          from: sender, // ✅ Correction ici : On récupère bien l'expéditeur
+          to,
+          content: message,
+          timestamp: new Date(),
+        };
+    
+        // 🔥 Log pour debug
+        console.log("Message privé envoyé :", messageData);
+        console.log("Recherche du socket pour :", to);
+        console.log("Utilisateurs connectés :", [...io.sockets.sockets.values()].map(s => s.handshake.auth.username));
+    
+        // 🔹 Sauvegarde en base de données (même si le destinataire est hors ligne)
+        await privateMessagesCollection.insertOne(messageData);
+    
+        if (recipientSocket) {
+          console.log(`📩 Envoi du message à ${to} via le socket ID:`, recipientSocket.id);
+          recipientSocket.emit("private message", messageData);
+        } else {
+          console.warn(`⚠️ Le destinataire ${to} est hors ligne. Message stocké.`);
+        }
+        
+    
+        callback({ success: true, message: "Message sent successfully." });
+      } catch (error) {
+        console.error("Erreur lors de l'envoi du message privé :", error);
+        callback({ success: false, message: "Failed to send message." });
+      }
+    });
+    
+    
 
     // In your socket.io connection handler
     socket.on("change username", async (newUsername, callback) => {
@@ -281,5 +330,9 @@ export function handleSocketConnection(io) {
         io.to(currentRoom).emit("system message", `${username} disconnected`);
       }
     });
+    socket.on("disconnect", (reason) => {
+      console.warn(`⚠️ User ${username} disconnected. Reason: ${reason}`);
+    });
+    
   });
 }
