@@ -5,6 +5,7 @@ import RoomModal from "./components/RoomModal";
 import ChatInterface from "./components/ChatInterface";
 import SideMenu from "./components/SideMenu";
 import PrivateMessage from "./components/PrivateMessage";
+import RoomSideMenu from "./components/RoomSideMenu";
 
 const socket = io("http://localhost:3000"); // Connexion au serveur
 
@@ -21,6 +22,8 @@ const App = () => {
   const [usersInRoom, setUsersInRoom] = useState([]); // 🔥 Liste des utilisateurs
   const [notifications, setNotifications] = useState([]);
   const [newUsername, setNewUsername] = useState("");
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+
 
   // Gestion des messages reçus via Socket.IO
   useEffect(() => {
@@ -424,6 +427,15 @@ const App = () => {
         />
       )}
 
+      {/* 🔥 Side Menu (s'affiche seulement si ouvert) */}
+      {isSideMenuOpen && (
+        <RoomSideMenu
+          room={room}
+          usersInRoom={usersInRoom}
+          onClose={() => setIsSideMenuOpen(false)}
+          onLeaveRoom={leaveRoom}
+        />
+      )}
       {/* Interface des messages privés */}
       <PrivateMessage socket={socket} username={username} />
 

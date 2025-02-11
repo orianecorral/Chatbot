@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from "react";
-import { FaUsers, FaDoorOpen } from "react-icons/fa";
+import React, { useEffect, useRef, useState } from "react";
+import { FaUsers, FaDoorOpen, FaBars } from "react-icons/fa"; // ✅ Ajout de FaBars
+import RoomSideMenu from "./RoomSideMenu";
 
 const ChatInterface = ({
   messages = [],
@@ -18,10 +19,25 @@ const ChatInterface = ({
   room,
 }) => {
   const messagesEndRef = useRef(null);
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+
 
   // Auto-scroll vers le dernier message
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Fonction pour quitter la room
+  const leaveRoom = () => {
+    socket.emit("quit room", room, (response) => {
+      if (response.success) {
+        setRoom(""); // Réinitialise la room après le départ
+        setUsersInRoom([]); // Vide la liste des utilisateurs
+        setIsSideMenuOpen(false); // Ferme le Side Menu
+      } else {
+        alert(response.message);
+      }
+    });
   };
 
   useEffect(() => {
@@ -59,10 +75,14 @@ const ChatInterface = ({
 
       {/* 🔥 Header affichant la room actuelle */}
       {room && (
-        <div className="w-full bg-gray-200 text-center py-3 text-lg font-semibold text-gray-700 shadow-md">
-          🏠 Room actuelle : <span className="text-blue-600">{room}</span>
+        <div className="w-full bg-gray-200 text-center py-3 text-lg font-semibold text-gray-700 shadow-md flex justify-between px-6">
+          <span>🏠 Room actuelle : <span className="text-blue-600">{room}</span></span>
+          <button onClick={() => setIsSideMenuOpen(true)} className="text-gray-600 hover:text-gray-900">
+            <FaBars size={22} /> {/* ✅ Icône du menu */}
+          </button>
         </div>
       )}
+
 
       {/* 🌟 Conteneur principal avec flex */}
       <div className="flex flex-1 w-full h-full">
@@ -153,7 +173,19 @@ const ChatInterface = ({
           </div>
         </div>
       </div>
+
+      {/* 🔥 Side Menu (s'affiche seulement si ouvert) */}
+      {isSideMenuOpen && (
+        <RoomSideMenu
+          room={room}
+          usersInRoom={usersInRoom}
+          onClose={() => setIsSideMenuOpen(false)}
+          onLeaveRoom={leaveRoom}
+        />
+      )}
+
     </div>
+
   );
 };
 
