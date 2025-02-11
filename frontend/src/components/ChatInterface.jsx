@@ -18,7 +18,8 @@ const ChatInterface = ({
   room,
 }) => {
   const messagesEndRef = useRef(null);
-  // Fonction pour faire défiler automatiquement vers le dernier message
+
+  // Auto-scroll vers le dernier message
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -27,61 +28,32 @@ const ChatInterface = ({
     scrollToBottom();
   }, [messages]);
 
+  // Récupération des rooms disponibles
   useEffect(() => {
-    // 🔥 Demande la liste des rooms dès l'affichage du chat
     socket.emit("list rooms");
+    socket.on("available rooms", (rooms) => setRooms(rooms));
+    return () => socket.off("available rooms");
+  }, [socket]);
 
-    // 🔥 Met à jour l'état dès qu'on reçoit les rooms du backend
-    socket.on("available rooms", (rooms) => {
-      console.log("📌 Rooms reçues du serveur :", rooms);
-      setRooms(rooms);
-    });
-
-    return () => {
-      socket.off("available rooms");
-    };
-  }, [socket]); // 🔥 Ajout de `socket` comme dépendance
-
-
+  // Mises à jour des rooms lors des événements
   useEffect(() => {
-    socket.on("room created", () => {
-      socket.emit("list rooms"); // 🔥 Met à jour si une room est créée
-    });
-
-    socket.on("room deleted", () => {
-      socket.emit("list rooms"); // 🔥 Met à jour si une room est supprimée
-    });
-
+    socket.on("room created", () => socket.emit("list rooms"));
+    socket.on("room deleted", () => socket.emit("list rooms"));
     return () => {
       socket.off("room created");
       socket.off("room deleted");
     };
   }, []);
 
-  useEffect(() => {
-    socket.emit("list rooms"); // 🔥 Demande la liste des rooms au serveur
-
-    socket.on("available rooms", (rooms) => {
-      console.log("📌 Rooms reçues du serveur :", rooms); // 🔥 Ajout du log
-      setRooms(rooms);
-    });
-
-    return () => {
-      socket.off("available rooms");
-    };
-  }, []);
-
-
+  // Liste des utilisateurs uniques dans la room
   const uniqueUsers = Array.from(
     new Map(usersInRoom.map((user) => [user.username, user])).values()
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-800 flex flex-col items-center">
-      {console.log("📌 Liste affichée dans l'interface :", rooms)}
-
+    <div className="h-screen w-full flex flex-col bg-gradient-to-br from-blue-600 to-purple-800">
       {/* 🌟 Header */}
-      <header className="w-full bg-white shadow-lg py-5 text-center text-3xl font-extrabold text-primary tracking-wide">
+      <header className="w-full bg-white shadow-lg py-5 text-center text-3xl font-extrabold text-primary">
         ChatApp 💬
       </header>
 
@@ -91,32 +63,28 @@ const ChatInterface = ({
           🏠 Room actuelle : <span className="text-blue-600">{room}</span>
         </div>
       )}
-      <div className="flex flex-col md:flex-row w-full h-full justify-center items-center mt-4 px-4 md:px-8">
-        {/* 🔥 Encart utilisateur connecté */}
-        <div className="fixed bottom-4 left-4 bg-gray-100 p-3 rounded-lg shadow-md flex items-center gap-2">
-          <span className="text-gray-700 text-lg font-semibold">👤 {username}</span>
-        </div>
-        {/* 🔥 Sidebar responsive */}
-        <div className="w-full md:w-1/4 bg-white p-5 shadow-xl h-auto md:h-[85vh] rounded-lg flex flex-col mb-4 md:mb-0">
-          {/* 🔥 Liste des rooms disponibles */}
-          <div className="mb-6">
+
+      {/* 🌟 Conteneur principal avec flex */}
+      <div className="flex flex-1 w-full h-full">
+
+        {/* 🔥 Sidebar (Liste des Rooms et Utilisateurs) */}
+        <div className="w-1/4 min-w-[250px] bg-white p-5 shadow-xl flex flex-col">
+          {/* 🔹 Liste des rooms */}
+          <div className="mb-6 flex flex-col flex-1 overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-primary">Available Rooms</h2>
               <FaDoorOpen className="text-primary" size={22} />
             </div>
-            <ul className="overflow-y-auto max-h-48 space-y-2">
+            <ul className="space-y-2">
               {rooms.length > 0 ? (
                 rooms.map((room) => (
                   <li
                     key={room.name}
-                    className="card bg-gray-100 shadow-md hover:bg-primary hover:text-white transition cursor-pointer p-3 rounded-lg"
+                    className="cursor-pointer bg-gray-100 p-3 rounded-lg shadow-md hover:bg-primary hover:text-white transition"
                     onClick={() => joinRoom(room.name)}
                   >
                     <div className="font-bold">{room.name}</div>
                     <div className="text-sm opacity-70">Created by: {room.creator || "Unknown"}</div>
-                    <div className="text-xs text-gray-400">
-                      {room.createdAt ? new Date(room.createdAt).toLocaleString() : "Unknown Date"}
-                    </div>
                   </li>
                 ))
               ) : (
@@ -125,7 +93,7 @@ const ChatInterface = ({
             </ul>
           </div>
 
-          {/* 🌟 Users in Room Section */}
+          {/* 🔹 Liste des utilisateurs */}
           <div className="bg-gray-100 p-3 rounded-lg shadow-md">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-bold text-secondary">Users in this Room</h3>
@@ -145,16 +113,16 @@ const ChatInterface = ({
           </div>
         </div>
 
-        {/* 🔥 Chat Interface (Responsive) */}
-        <div className="w-full md:w-3/4 max-w-5xl flex flex-col bg-white shadow-2xl rounded-lg p-6 h-[75vh] md:h-[85vh]">
+        {/* 🔥 Chat Interface (Full Height) */}
+        <div className="flex-1 flex flex-col bg-white shadow-2xl rounded-lg h-full">
 
           {/* 🌟 Messages Section */}
-          <div className="overflow-y-auto flex-grow flex flex-col gap-3 p-2">
+          <div className="flex-1 overflow-y-auto p-6 space-y-3">
             {messages.map((msg, index) => {
               const isUser = msg.username === username;
               return (
                 <div key={index} className={`chat ${isUser ? "chat-end" : "chat-start"}`}>
-                  <div className={`chat-bubble ${isUser ? "bg-primary text-white" : "bg-accent text-white"}`}>
+                  <div className={`chat-bubble ${isUser ? "bg-blue-500 text-white" : "bg-gray-300 text-black"}`}>
                     <div className="text-sm font-bold">{msg.username}</div>
                     <div>{msg.content}</div>
                     <div className="text-xs opacity-70 mt-1 text-right">
@@ -168,22 +136,21 @@ const ChatInterface = ({
           </div>
 
           {/* 🌟 Input Box */}
-          <div className="flex flex-col md:flex-row items-center gap-2 mt-4 p-3 border-t">
+          <div className="p-4 border-t flex gap-2 bg-gray-100">
             <input
-              className="input input-bordered w-full text-lg p-4"
+              className="flex-1 p-3 border rounded-md text-lg outline-none"
+              placeholder="Type your message..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Type your message..."
             />
             <button
               onClick={sendMessage}
-              className="btn btn-primary shadow-lg px-6 py-3 text-lg w-full md:w-auto"
+              className="bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition"
             >
               Send
             </button>
           </div>
-
         </div>
       </div>
     </div>
