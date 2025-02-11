@@ -114,8 +114,6 @@ export function handleSocketConnection(io) {
         const roomsCollection = getRoomsCollection();
         const rooms = await roomsCollection.find({}).toArray();
     
-        console.log("📌 Rooms envoyées au client :", rooms); // 🔥 Debug
-    
         // 🔥 Envoi des rooms à tous les clients
         io.emit("available rooms", rooms);
       } catch (error) {

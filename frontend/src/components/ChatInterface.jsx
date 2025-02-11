@@ -15,6 +15,7 @@ const ChatInterface = ({
   setNewUsername,
   changeUsername,
   socket,
+  room,
 }) => {
   const messagesEndRef = useRef(null);
   // Fonction pour faire défiler automatiquement vers le dernier message
@@ -84,12 +85,19 @@ const ChatInterface = ({
         ChatApp 💬
       </header>
 
+      {/* 🔥 Header affichant la room actuelle */}
+      {room && (
+        <div className="w-full bg-gray-200 text-center py-3 text-lg font-semibold text-gray-700 shadow-md">
+          🏠 Room actuelle : <span className="text-blue-600">{room}</span>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row w-full h-full justify-center items-center mt-4 px-4 md:px-8">
-
+        {/* 🔥 Encart utilisateur connecté */}
+        <div className="fixed bottom-4 left-4 bg-gray-100 p-3 rounded-lg shadow-md flex items-center gap-2">
+          <span className="text-gray-700 text-lg font-semibold">👤 {username}</span>
+        </div>
         {/* 🔥 Sidebar responsive */}
         <div className="w-full md:w-1/4 bg-white p-5 shadow-xl h-auto md:h-[85vh] rounded-lg flex flex-col mb-4 md:mb-0">
-
-          {/* 🔥 Liste des rooms disponibles */}
           {/* 🔥 Liste des rooms disponibles */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">

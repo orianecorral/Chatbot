@@ -390,13 +390,8 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-800 flex flex-col items-center justify-center p-6">
-      {/* 🔥 Encart utilisateur connecté */}
-      <div className="fixed bottom-4 left-4 bg-gray-100 p-3 rounded-lg shadow-md flex items-center gap-2">
-        <span className="text-gray-700 text-lg font-semibold">👤 {username}</span>
-      </div>
       {showUsernameModal && <UsernameModal onSubmit={handleUsernameSubmit} />}
       {showRoomModal && <RoomModal onSubmit={handleRoomSubmit} />}
-
       {!showUsernameModal && !showRoomModal && (
         <>
           {/* 🔥 Interface du Chat */}
@@ -414,6 +409,7 @@ const App = () => {
             newUsername={newUsername}
             setNewUsername={setNewUsername}
             socket={socket}
+            room={room}
 
           />
         </>
